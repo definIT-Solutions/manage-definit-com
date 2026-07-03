@@ -10,6 +10,9 @@ export const config = {
   apiKey: env('API_KEY'),
   anthropicApiKey: env('ANTHROPIC_API_KEY'),
   openaiApiKey: env('OPENAI_API_KEY'),
+  // Deepgram is the primary STT engine (diarization + telephony-tuned). Optional
+  // so a missing key never crashes boot; transcription falls back to Whisper.
+  deepgramApiKey: process.env.DEEPGRAM_API_KEY || '',
   smtpHost: env('SMTP_HOST', 'smtp.office365.com'),
   smtpPort: parseInt(env('SMTP_PORT', '587'), 10),
   smtpSecure: process.env.SMTP_SECURE === 'true',
