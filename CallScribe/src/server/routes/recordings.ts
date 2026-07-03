@@ -1,8 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
-import { saveFile, getFilePath } from '../services/storage.js';
-import { transcribe } from '../services/transcription.js';
+import { saveFile, getFilePath, deleteFile } from '../services/storage.js';
+import { transcribe, extractActionItems } from '../services/transcription.js';
 import { sendTranscriptEmail } from '../services/email.js';
 
 export async function recordingRoutes(fastify: FastifyInstance) {
@@ -69,24 +69,40 @@ export async function recordingRoutes(fastify: FastifyInstance) {
 
   // List recordings (web UI)
   fastify.get('/', async (request: FastifyRequest) => {
-    const { page = '1', limit = '50', phone_number, search } = request.query as Record<string, string>;
+    const { page = '1', limit = '50', phone_number, search, from, to } = request.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page, 10));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
     const skip = (pageNum - 1) * limitNum;
 
     const where: any = {};
     if (phone_number) where.phoneNumber = phone_number;
+
+    // Date range filter (from/to are YYYY-MM-DD, inclusive of the whole day)
+    if (from || to) {
+      where.startedAt = {};
+      if (from) where.startedAt.gte = new Date(`${from}T00:00:00.000`);
+      if (to) where.startedAt.lte = new Date(`${to}T23:59:59.999`);
+    }
+
     if (search) {
+      // Match phone numbers whose assigned contact name contains the search term
+      const matchedContacts = await prisma.contact.findMany({
+        where: { name: { contains: search, mode: 'insensitive' } },
+        select: { phoneNumber: true },
+      });
       where.OR = [
         { phoneNumber: { contains: search } },
         { transcript: { contains: search, mode: 'insensitive' } },
         { notes: { contains: search, mode: 'insensitive' } },
+        ...(matchedContacts.length
+          ? [{ phoneNumber: { in: matchedContacts.map(c => c.phoneNumber) } }]
+          : []),
       ];
     }
 
     const [recordings, total] = await Promise.all([
       prisma.recording.findMany({
-        where, orderBy: { createdAt: 'desc' }, skip, take: limitNum,
+        where, orderBy: { startedAt: 'desc' }, skip, take: limitNum,
         select: {
           id: true, phoneNumber: true, direction: true, startedAt: true,
           durationSeconds: true, transcriptStatus: true, emailSent: true,
@@ -96,10 +112,18 @@ export async function recordingRoutes(fastify: FastifyInstance) {
       prisma.recording.count({ where }),
     ]);
 
+    // Resolve contact names for the phone numbers in this page
+    const numbers = [...new Set(recordings.map(r => r.phoneNumber))];
+    const contacts = numbers.length
+      ? await prisma.contact.findMany({ where: { phoneNumber: { in: numbers } } })
+      : [];
+    const nameByNumber = new Map(contacts.map(c => [c.phoneNumber, c.name]));
+
     return {
       recordings: recordings.map(r => ({
         id: r.id,
         phone_number: r.phoneNumber,
+        contact_name: nameByNumber.get(r.phoneNumber) || null,
         direction: r.direction,
         started_at: r.startedAt.toISOString(),
         duration_seconds: r.durationSeconds,
@@ -177,6 +201,20 @@ export async function recordingRoutes(fastify: FastifyInstance) {
     };
   });
 
+  // Delete a single recording (web UI) — removes the audio file too
+  fastify.delete('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const recording = await prisma.recording.findUnique({
+      where: { id },
+      select: { audioFilePath: true },
+    });
+    if (!recording) return reply.code(404).send({ error: 'Not found' });
+
+    await prisma.recording.delete({ where: { id } });
+    await deleteFile(recording.audioFilePath).catch(() => {});
+    return reply.send({ deleted: true });
+  });
+
   // Update notes (web UI)
   fastify.patch('/:id/notes', async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
@@ -196,9 +234,12 @@ export async function recordingRoutes(fastify: FastifyInstance) {
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
     });
+    const contacts = await prisma.contact.findMany();
+    const nameByNumber = new Map(contacts.map(c => [c.phoneNumber, c.name]));
     return {
       phone_numbers: result.map(r => ({
         phone_number: r.phoneNumber,
+        name: nameByNumber.get(r.phoneNumber) || null,
         count: r._count.id,
       })),
     };
@@ -219,6 +260,16 @@ async function processRecording(prisma: PrismaClient, recordingId: string, log: 
       where: { id: recordingId },
       data: { transcriptStatus: 'completed', transcript },
     });
+
+    // Seed the Notes field with the call's action items — but only when Notes is
+    // still empty, so we never overwrite anything a human has typed.
+    const actionItems = extractActionItems(transcript);
+    if (actionItems && (!recording.notes || recording.notes.trim() === '')) {
+      await prisma.recording.update({
+        where: { id: recordingId },
+        data: { notes: `Action items:\n${actionItems}` },
+      });
+    }
 
     try {
       await sendTranscriptEmail(recording.phoneNumber, recording.direction, recording.startedAt, transcript);

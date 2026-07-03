@@ -218,6 +218,23 @@ A bullet list of concrete commitments, follow-ups, or next steps with who owns e
 }
 
 // ---------------------------------------------------------------------------
+// Pull the "## Action Items" bullet block out of a finished transcript so it
+// can seed the Notes field. Returns '' when the section is missing or is just
+// "None identified" (nothing actionable to surface).
+// ---------------------------------------------------------------------------
+export function extractActionItems(transcript: string): string {
+  if (!transcript) return '';
+  const idx = transcript.search(/^##\s*Action Items\s*$/im);
+  if (idx === -1) return '';
+  const after = transcript.slice(idx).replace(/^##\s*Action Items\s*$/im, '');
+  const next = after.search(/^##\s/m);
+  const body = (next === -1 ? after : after.slice(0, next)).trim();
+  const stripped = body.replace(/^[-*\s]+/, '').trim();
+  if (!body || /^none identified\.?$/i.test(stripped)) return '';
+  return body;
+}
+
+// ---------------------------------------------------------------------------
 // Orchestrator. Returns: <Claude header> + verbatim transcript + provenance.
 // ---------------------------------------------------------------------------
 export async function transcribe(
