@@ -218,20 +218,35 @@ A bullet list of concrete commitments, follow-ups, or next steps with who owns e
 }
 
 // ---------------------------------------------------------------------------
-// Pull the "## Action Items" bullet block out of a finished transcript so it
-// can seed the Notes field. Returns '' when the section is missing or is just
-// "None identified" (nothing actionable to surface).
+// Pull the "## Action Items" section out of a finished transcript. Returns ''
+// when the section is missing or is a "None identified…" line (incl. variants
+// like "None identified - transcript unintelligible") — nothing actionable.
 // ---------------------------------------------------------------------------
-export function extractActionItems(transcript: string): string {
+function actionItemsBlock(transcript: string): string {
   if (!transcript) return '';
   const idx = transcript.search(/^##\s*Action Items\s*$/im);
   if (idx === -1) return '';
   const after = transcript.slice(idx).replace(/^##\s*Action Items\s*$/im, '');
   const next = after.search(/^##\s/m);
   const body = (next === -1 ? after : after.slice(0, next)).trim();
-  const stripped = body.replace(/^[-*\s]+/, '').trim();
-  if (!body || /^none identified\.?$/i.test(stripped)) return '';
+  if (!body || /^\s*[-*]?\s*none identified/i.test(body)) return '';
   return body;
+}
+
+// Raw bullet block — used to seed the CallScribe per-recording Notes field.
+export function extractActionItems(transcript: string): string {
+  return actionItemsBlock(transcript);
+}
+
+// Individual action items as clean one-line strings — used for the Notes-app
+// checklist (one checkbox per item). Strips bullets/bold and joins wrapped lines.
+export function parseActionItems(transcript: string): string[] {
+  const block = actionItemsBlock(transcript);
+  if (!block) return [];
+  return block
+    .split(/\n(?=\s*[-*]\s)/)
+    .map((raw) => raw.trim().replace(/^[-*]\s+/, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------

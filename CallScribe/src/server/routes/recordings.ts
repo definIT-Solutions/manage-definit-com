@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { saveFile, getFilePath, deleteFile } from '../services/storage.js';
 import { transcribe, extractActionItems } from '../services/transcription.js';
+import { logCallToNotesApp } from '../services/notesApp.js';
 import { sendTranscriptEmail } from '../services/email.js';
 
 export async function recordingRoutes(fastify: FastifyInstance) {
@@ -269,6 +270,16 @@ async function processRecording(prisma: PrismaClient, recordingId: string, log: 
         where: { id: recordingId },
         data: { notes: `Action items:\n${actionItems}` },
       });
+    }
+
+    // Also log a card in the standalone Notes app (action items as a checklist).
+    // Best-effort: a failure here must never fail the transcription.
+    try {
+      const contact = await prisma.contact.findUnique({ where: { phoneNumber: recording.phoneNumber } });
+      const outcome = await logCallToNotesApp(recording, transcript, contact?.name ?? null);
+      log.info({ recordingId, outcome }, 'Notes-app card');
+    } catch (notesErr: any) {
+      log.error({ err: notesErr, recordingId }, 'Notes-app logging failed');
     }
 
     try {
