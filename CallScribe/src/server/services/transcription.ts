@@ -106,10 +106,13 @@ async function deepgramTranscribe(fullPath: string, keyterms: string[]): Promise
   const lines = utterances.map((u) => {
     const spk = typeof u.speaker === 'number' ? u.speaker : 0;
     const text = String(u.transcript ?? '').trim();
-    return `[${fmtTs(Number(u.start) || 0)}] Speaker ${spk}: ${text}`;
+    // Bold the label + blank line between utterances so Markdown renderers
+    // (marked in email, the custom formatter in the web UI) keep each turn on
+    // its own line instead of collapsing single newlines into one wall of text.
+    return `**[${fmtTs(Number(u.start) || 0)}] Speaker ${spk}:** ${text}`;
   });
 
-  return { body: lines.join('\n'), diarized: true, engine: 'Deepgram nova-3 (diarized)' };
+  return { body: lines.join('\n\n'), diarized: true, engine: 'Deepgram nova-3 (diarized)' };
 }
 
 // ---------------------------------------------------------------------------
