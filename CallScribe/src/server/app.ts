@@ -9,6 +9,7 @@ import { dirname, join } from 'path';
 import { config } from './config.js';
 import { authRoutes } from './routes/auth.js';
 import { recordingRoutes } from './routes/recordings.js';
+import { contactRoutes } from './routes/contacts.js';
 import { healthRoutes } from './routes/health.js';
 
 declare module 'fastify' {
@@ -82,6 +83,7 @@ export async function createApp() {
   await app.register(healthRoutes, { prefix: '/api/health' });
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(recordingRoutes, { prefix: '/api/recordings' });
+  await app.register(contactRoutes, { prefix: '/api/contacts' });
 
   // Serve static frontend
   // In dev: __dirname = .../src/server → go up 2 to reach dist/client

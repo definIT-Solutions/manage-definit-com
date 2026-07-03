@@ -7,7 +7,7 @@ import RecordingsView from './pages/RecordingsView';
 import RecordingDetail from './pages/RecordingDetail';
 
 interface User { id: string; email: string; displayName: string | null }
-interface PhoneNumberEntry { phone_number: string; count: number }
+interface PhoneNumberEntry { phone_number: string; name: string | null; count: number }
 
 export default function App() {
   const navigate = useNavigate();
@@ -19,9 +19,12 @@ export default function App() {
     (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light'
   );
 
+  const refreshPhoneNumbers = () =>
+    api.getPhoneNumbers().then(data => setPhoneNumbers(data.phone_numbers)).catch(() => {});
+
   useEffect(() => {
     api.getMe().then(data => setUser(data.user)).catch(() => {});
-    api.getPhoneNumbers().then(data => setPhoneNumbers(data.phone_numbers)).catch(() => {});
+    refreshPhoneNumbers();
   }, []);
 
   const toggleTheme = () => {
@@ -81,7 +84,7 @@ export default function App() {
                   onClick={() => navigate(`/number/${encodeURIComponent(pn.phone_number)}`)}
                 >
                   <PhoneIncoming size={18} />
-                  <span>{pn.phone_number}</span>
+                  <span>{pn.name || pn.phone_number}</span>
                   <span className="nav-count">{pn.count}</span>
                 </button>
               ))}
@@ -121,8 +124,8 @@ export default function App() {
 
         <main className="zendesk-content">
           <Routes>
-            <Route path="/" element={<RecordingsView searchQuery={searchQuery} />} />
-            <Route path="/number/:phoneNumber" element={<RecordingsView searchQuery={searchQuery} />} />
+            <Route path="/" element={<RecordingsView searchQuery={searchQuery} onContactSaved={refreshPhoneNumbers} />} />
+            <Route path="/number/:phoneNumber" element={<RecordingsView searchQuery={searchQuery} onContactSaved={refreshPhoneNumbers} />} />
             <Route path="/recording/:id" element={<RecordingDetail />} />
           </Routes>
         </main>

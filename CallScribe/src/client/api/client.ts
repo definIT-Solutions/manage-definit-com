@@ -38,6 +38,20 @@ export const api = {
 
   getPhoneNumbers: () => request<any>('/recordings-meta/phone-numbers'),
 
+  getContacts: () => request<any>('/contacts'),
+
+  setContactName: (phoneNumber: string, name: string) =>
+    request<any>(`/contacts/${encodeURIComponent(phoneNumber)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteRecording: (id: string) =>
+    request<any>(`/recordings/${id}`, { method: 'DELETE' }),
+
+  deleteContact: (phoneNumber: string) =>
+    request<any>(`/contacts/${encodeURIComponent(phoneNumber)}`, { method: 'DELETE' }),
+
   getAudioUrl: (id: string) => `${API_BASE}/recordings/${id}/audio`,
 
   getHealth: () => request<any>('/health'),

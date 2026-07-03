@@ -36,6 +36,15 @@ model Recording {
   @@index([createdAt])
 }
 
+model Contact {
+  phoneNumber String   @id @map("phone_number")
+  name        String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("contacts")
+}
+
 model User {
   id          String   @id @default(uuid())
   email       String   @unique

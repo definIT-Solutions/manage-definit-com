@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, PhoneIncoming, PhoneOutgoing, Clock, Mail, MailX, Save, FileText, AlertCircle, Loader2, Check, Play } from 'lucide-react';
+import { ArrowLeft, PhoneIncoming, PhoneOutgoing, Clock, Mail, MailX, Save, FileText, AlertCircle, Loader2, Check, Play, Trash2 } from 'lucide-react';
 import { api } from '../api/client';
 
 interface RecordingData {
@@ -57,6 +57,15 @@ export default function RecordingDetail() {
     return () => clearTimeout(timer);
   }, [notes, notesDirty, id]);
 
+  const handleDelete = async () => {
+    if (!id || !recording) return;
+    if (!window.confirm(`Delete this recording from ${recording.phone_number}? The audio and transcript are removed permanently.`)) return;
+    try {
+      await api.deleteRecording(id);
+      navigate(-1);
+    } catch {}
+  };
+
   const handleSaveNotes = async () => {
     if (!id) return;
     setSaving(true);
@@ -88,9 +97,14 @@ export default function RecordingDetail() {
 
   return (
     <div className="recording-detail">
-      <button className="back-btn" onClick={() => navigate(-1)}>
-        <ArrowLeft size={18} /> Back
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button className="back-btn" onClick={() => navigate(-1)}>
+          <ArrowLeft size={18} /> Back
+        </button>
+        <button className="btn btn-sm btn-danger" onClick={handleDelete}>
+          <Trash2 size={14} /> Delete
+        </button>
+      </div>
 
       {/* Header */}
       <div className="detail-header">

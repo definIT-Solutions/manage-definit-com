@@ -14,3 +14,7 @@ export async function saveFile(filename: string, data: Buffer): Promise<{ path: 
   await fs.promises.writeFile(filePath, data);
   return { path: filename, size: data.length };
 }
+
+export async function deleteFile(filename: string): Promise<void> {
+  await fs.promises.rm(getFilePath(filename), { force: true });
+}
