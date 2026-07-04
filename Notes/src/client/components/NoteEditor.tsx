@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pin, Archive, Trash2, Plus, X, Tag, Palette, Globe, Lock } from 'lucide-react';
 import { api } from '../api/client';
-import { NOTE_COLORS, type Note } from './NoteCard';
+import { NOTE_COLORS, relativeDate, type Note } from './NoteCard';
 
 interface Label {
   id: string;
@@ -124,6 +124,8 @@ export default function NoteEditor({ note, labels, isOwner, onClose, onUpdate, o
             </button>
           )}
         </div>
+
+        <div className="note-editor-date" style={{ fontSize: 13, opacity: 0.6, padding: '2px 0 8px' }}>{relativeDate(note.createdAt)}</div>
 
         <textarea
           className="note-editor-content"

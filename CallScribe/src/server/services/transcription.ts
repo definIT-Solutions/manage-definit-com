@@ -229,7 +229,7 @@ function actionItemsBlock(transcript: string): string {
   const after = transcript.slice(idx).replace(/^##\s*Action Items\s*$/im, '');
   const next = after.search(/^##\s/m);
   const body = (next === -1 ? after : after.slice(0, next)).trim();
-  if (!body || /^\s*[-*]?\s*none identified/i.test(body)) return '';
+  if (!body || /^\s*[-*•‣]?\s*none identified/i.test(body)) return '';
   return body;
 }
 
@@ -244,7 +244,9 @@ export function parseActionItems(transcript: string): string[] {
   const block = actionItemsBlock(transcript);
   if (!block) return [];
   return block
-    .split(/\n(?=\s*[-*]\s)/)
+    .replace(/\r/g, '')
+    .replace(/\s*[•‣]\s+/g, '\n- ')          // •/‣ bullets (inline or line-start) -> newline dash
+    .split(/\n(?=\s*[-*]\s)/)                 // split before each bullet
     .map((raw) => raw.trim().replace(/^[-*]\s+/, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim())
     .filter(Boolean);
 }

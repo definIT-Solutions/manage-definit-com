@@ -14,6 +14,46 @@ export const NOTE_COLORS: Record<string, { light: string; dark: string }> = {
   gray: { light: '#f3f4f6', dark: '#374151' },
 };
 
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Friendly, live relative date: Today / Yesterday / weekday (within a week) / date.
+export function relativeDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff > 1 && diff < 7) return WEEKDAYS[d.getDay()];
+  if (d.getFullYear() === now.getFullYear()) return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+// Render note text with clickable links — supports [label](url) and bare URLs.
+// Links stop click propagation so they navigate instead of opening the editor.
+export function renderNoteContent(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const url = m[2] || m[3];
+    const label = m[1] || m[3];
+    nodes.push(
+      <a key={key++} href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+        {label}
+      </a>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
 interface ChecklistItem {
   id: string;
   text: string;
@@ -98,8 +138,10 @@ export default function NoteCard({
 
       {note.title && <div className="note-card-title">{note.title}</div>}
 
+      <div className="note-card-date" style={{ fontSize: 12, opacity: 0.6, marginBottom: 4 }}>{relativeDate(note.createdAt)}</div>
+
       {note.content && (
-        <div className="note-card-content">{note.content.length > 200 ? note.content.slice(0, 200) + '...' : note.content}</div>
+        <div className="note-card-content">{renderNoteContent(note.content.length > 400 ? note.content.slice(0, 400) + '...' : note.content)}</div>
       )}
 
       {note.checklistItems.length > 0 && (
