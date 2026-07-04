@@ -196,6 +196,18 @@ export default function NotesView({ view, searchQuery, labels, currentUserId, on
     setDragOverId(null);
   };
 
+  const handleToggleChecklistItem = async (noteId: string, itemId: string, checked: boolean) => {
+    // Optimistic: flip the item so it moves out of the card's unchecked list immediately.
+    setNotes(prev => prev.map(n => n.id === noteId
+      ? { ...n, checklistItems: n.checklistItems.map(ci => ci.id === itemId ? { ...ci, checked } : ci) }
+      : n));
+    try {
+      await api.updateChecklistItem(noteId, itemId, { checked });
+    } catch {
+      fetchNotes(); // revert to server state on failure
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -227,6 +239,7 @@ export default function NotesView({ view, searchQuery, labels, currentUserId, on
       onDragOver={(e) => handleDragOver(e, note.id)}
       onDrop={(e) => handleDrop(e, note.id)}
       onDragEnd={handleDragEnd}
+      onToggleItem={(itemId, checked) => handleToggleChecklistItem(note.id, itemId, checked)}
       isDragging={dragId === note.id}
       isDragOver={dragOverId === note.id}
     />

@@ -98,6 +98,7 @@ interface NoteCardProps {
   onDragOver?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
+  onToggleItem?: (itemId: string, checked: boolean) => void;
   isDragging?: boolean;
   isDragOver?: boolean;
 }
@@ -105,7 +106,7 @@ interface NoteCardProps {
 export default function NoteCard({
   note, view, isOwner, onClick,
   onPin, onArchive, onUnarchive, onTrash, onRestore, onDelete,
-  onDragStart, onDragOver, onDrop, onDragEnd,
+  onDragStart, onDragOver, onDrop, onDragEnd, onToggleItem,
   isDragging, isDragOver,
 }: NoteCardProps) {
   const theme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -148,7 +149,16 @@ export default function NoteCard({
         <div className="note-card-checklist">
           {unchecked.slice(0, 5).map(item => (
             <div key={item.id} className="note-card-check-item">
-              <span className="check-box" /> <span>{item.text}</span>
+              <input
+                type="checkbox"
+                className="note-card-check"
+                checked={false}
+                disabled={!isOwner}
+                title="Mark done"
+                onClick={e => e.stopPropagation()}
+                onChange={e => { e.stopPropagation(); onToggleItem?.(item.id, true); }}
+              />
+              <span>{item.text}</span>
             </div>
           ))}
           {unchecked.length > 5 && (
