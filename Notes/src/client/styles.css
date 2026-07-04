@@ -263,7 +263,7 @@ body {
 .view-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-muted); }
 .section-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin: 1.5rem 0 0.75rem; }
 .section-label:first-of-type { margin-top: 0; }
-.notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; align-items: start; margin-bottom: 1rem; }
+.notes-grid { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
 .trash-notice { font-size: 0.8rem; color: var(--text-muted); background: var(--gray-100); padding: 0.5rem 1rem; border-radius: 6px; margin-bottom: 1rem; }
 
 /* Note card */
@@ -394,3 +394,5 @@ html.in-iframe .zendesk-layout { grid-template-columns: 1fr !important; }
 html.in-iframe .zendesk-main { grid-column: 1 !important; margin-left: 0 !important; }
 
 .notes-grid .note-card { margin-bottom: 0; break-inside: auto; }
+
+.masonry-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 1rem; }

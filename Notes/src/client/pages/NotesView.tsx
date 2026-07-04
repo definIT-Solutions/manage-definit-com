@@ -5,6 +5,56 @@ import NoteCard, { type Note } from '../components/NoteCard';
 import NoteEditor from '../components/NoteEditor';
 import CreateBar from '../components/CreateBar';
 
+// Rough card-height estimate (px) so the masonry can balance columns without a
+// two-pass DOM measure. Doesn't need to be exact — just enough to keep columns
+// even while preserving order (each card goes into the shortest column).
+function estimateNoteHeight(note: Note): number {
+  let h = 92; // padding + title + date line + action row
+  if (note.content) {
+    const clipped = Math.min(note.content.length, 400);
+    h += Math.max(1, Math.ceil(clipped / 32)) * 20;
+  }
+  const unchecked = note.checklistItems.filter(i => !i.checked).length;
+  h += Math.min(unchecked, 5) * 26;
+  if (unchecked > 5) h += 20;
+  if (note.checklistItems.some(i => i.checked)) h += 20;
+  if (note.noteLabels.length) h += 26;
+  return h;
+}
+
+// Masonry that fills columns in order (each card into the shortest column), so
+// the newest cards land across the top row and it still packs like Google Keep.
+function MasonryGrid({ items, render }: { items: Note[]; render: (n: Note) => React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [cols, setCols] = useState(1);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setCols(Math.max(1, Math.floor((el.clientWidth + 16) / (240 + 16))));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const columns: Note[][] = Array.from({ length: cols }, () => []);
+  const heights = new Array(cols).fill(0);
+  for (const item of items) {
+    let min = 0;
+    for (let c = 1; c < cols; c++) if (heights[c] < heights[min]) min = c;
+    columns[min].push(item);
+    heights[min] += estimateNoteHeight(item) + 16;
+  }
+
+  return (
+    <div className="notes-grid" ref={ref}>
+      {columns.map((col, i) => (
+        <div className="masonry-col" key={i}>{col.map(render)}</div>
+      ))}
+    </div>
+  );
+}
+
 interface Label {
   id: string;
   name: string;
@@ -202,18 +252,14 @@ export default function NotesView({ view, searchQuery, labels, currentUserId, on
         <div className="section-label">Pinned</div>
       )}
       {pinnedNotes.length > 0 && (
-        <div className="notes-grid">
-          {pinnedNotes.map(renderNoteCard)}
-        </div>
+        <MasonryGrid items={pinnedNotes} render={renderNoteCard} />
       )}
 
       {pinnedNotes.length > 0 && unpinnedNotes.length > 0 && (
         <div className="section-label">Others</div>
       )}
       {unpinnedNotes.length > 0 && (
-        <div className="notes-grid">
-          {unpinnedNotes.map(renderNoteCard)}
-        </div>
+        <MasonryGrid items={unpinnedNotes} render={renderNoteCard} />
       )}
 
       {editingNote && (
